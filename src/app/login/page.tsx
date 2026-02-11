@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
+import { toSafeRelativePath } from "@/lib/url";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(
+    () => toSafeRelativePath(searchParams.get("next")),
+    [searchParams],
+  );
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -30,7 +45,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push(nextPath);
   };
 
   const handleGoogleLogin = async () => {
@@ -40,7 +55,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}${nextPath}`,
       },
     });
 
@@ -52,8 +67,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-slate-100">
-      <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-xl">
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 sm:py-12">
+      <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl sm:p-8">
         <div className="mb-8">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
             Supabase Auth
@@ -64,14 +79,16 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <button
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={isOAuthLoading}
-        >
-          {isOAuthLoading ? "Connecting..." : "Continue with Google"}
-        </button>
+        <div className="mb-5 space-y-3">
+          <button
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isOAuthLoading}
+          >
+            {isOAuthLoading ? "Connecting..." : "Continue with Google"}
+          </button>
+        </div>
 
         <div className="flex items-center gap-4 text-xs uppercase tracking-[0.3em] text-slate-500">
           <span className="h-px flex-1 bg-slate-800" />
@@ -123,7 +140,10 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-slate-400">
           Need an account?{" "}
-          <Link className="font-semibold text-cyan-300" href="/signup">
+          <Link
+            className="font-semibold text-cyan-300"
+            href={`/signup?next=${encodeURIComponent(nextPath)}`}
+          >
             Create one
           </Link>
           .
